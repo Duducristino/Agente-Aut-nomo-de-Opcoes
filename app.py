@@ -2,9 +2,8 @@ import streamlit as st
 import pandas as pd
 
 @st.cache_data
-def carregar_dados():
-    return pd.read_csv("dados_opcoes.csv")  # Altere para o caminho correto se necessário
 
+df = pd.read_csv('src/dados_opcoes.csv')
 df_opcoes = carregar_dados()
 
 def filtrar_opcoes_inteligentes(df, tipo='CALL'):
