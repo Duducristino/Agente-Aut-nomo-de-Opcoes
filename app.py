@@ -1,71 +1,36 @@
 import streamlit as st
-from datetime import datetime
-import yfinance as yf
-import streamlit as st
+import pandas as pd
 
-st.set_page_config(page_title="Agente Autônomo de Opções", layout="wide")
+@st.cache_data
+def carregar_dados():
+    return pd.read_csv("dados_opcoes.csv")  # Altere para o caminho correto se necessário
 
-# Cabeçalho
+df_opcoes = carregar_dados()
+
+def filtrar_opcoes_inteligentes(df, tipo='CALL'):
+    try:
+        df_filtrado = df[df['tipo'].str.upper() == tipo.upper()]
+        df_filtrado = df_filtrado[df_filtrado['volumeFinanceiro'] > 100000]
+        df_filtrado = df_filtrado[(df_filtrado['delta'] >= 0.3) & (df_filtrado['delta'] <= 0.7)]
+        df_filtrado = df_filtrado[(df_filtrado['diasParaVencimento'] >= 3) & 
+                                  (df_filtrado['diasParaVencimento'] <= 20)]
+        df_filtrado = df_filtrado[df_filtrado['precoOpcao'] <= 5.00]
+
+        preco_ativo = df_filtrado['precoAtivo'].iloc[0]
+        df_filtrado['distanciaStrike'] = abs(df_filtrado['strike'] - preco_ativo)
+        df_filtrado = df_filtrado.sort_values(by='distanciaStrike')
+
+        return df_filtrado.head(5)
+    except Exception as e:
+        st.warning(f"Erro ao filtrar opções: {e}")
+        return pd.DataFrame()
+
 st.title("Agente Autônomo de Opções")
-st.markdown("### Análise automatizada do mercado de opções brasileiras")
-st.markdown("---")
 
-# Menu lateral
-st.sidebar.title("Configurações")
-notificacoes = st.sidebar.checkbox("Ativar notificações")
-simulacao_automatica = st.sidebar.checkbox("Rodar simulação automaticamente")
-st.sidebar.markdown(f"Última execução: **{datetime.now().strftime('%d/%m/%Y %H:%M:%S')}**")
+st.subheader("Melhores Opções CALL")
+melhores_calls = filtrar_opcoes_inteligentes(df_opcoes, tipo='CALL')
+st.dataframe(melhores_calls)
 
-# Simulação manual
-if st.button("Rodar Simulação Agora"):
-    st.success("Simulação executada com sucesso!")
-    st.info("Ativos recomendados: PETR4, VALE3, B3SA3 (exemplo)")
-    st.warning("Esses dados são apenas ilustrativos. Configure a conexão com a B3 para dados reais.")
-
-# Resultados da análise técnica
-st.markdown("## Indicadores Técnicos")
-st.write("- Tendência de curto e médio prazo")
-st.write("- Ponto de entrada ideal")
-st.write("- Probabilidade de acerto estimada")
-
-# Estratégias com opções
-st.markdown("## Estratégias com Opções")
-estrategia = st.selectbox("Escolha a estratégia:", ["Call Coberta", "Trava de Alta", "Trava de Baixa", "Venda de Puts", "Compra Direta de Calls"])
-st.write(f"Simulando estratégia: **{estrategia}**")
-
-# Simulação automática
-if simulacao_automatica:
-    st.info("Rodando simulação automática...")
-    st.success("Resultados atualizados automaticamente!")
-
-# Notificações
-if notificacoes:
-    st.markdown("## Notificações")
-    st.success("Notificações ativadas e integradas ao Telegram!")
-    st.write("Você será alertado quando houver um ativo com alta probabilidade de lucro.")
-
-st.header("Consulta de Ações e Opções em Tempo Real")
-
-ticker_input = st.text_input("Digite o ticker (ex: PETR4.SA)", "PETR4.SA")
-
-if st.button("Consultar"):
-    with st.spinner("Consultando..."):
-        ativo = yf.Ticker(ticker_input)
-        dados = ativo.history(period="1d", interval="5m")
-
-        st.subheader(f"Últimos dados de {ticker_input}")
-        st.dataframe(dados.tail())
-
-        opcoes = ativo.options
-        if opcoes:
-            vencimento = opcoes[0]
-            cadeia = ativo.option_chain(vencimento)
-            st.subheader(f"Opções CALL ({vencimento})")
-            st.dataframe(cadeia.calls)
-            st.subheader(f"Opções PUT ({vencimento})")
-            st.dataframe(cadeia.puts)
-        else:
-            st.warning("Este ativo não possui opções disponíveis no momento.")
-# Rodapé
-st.markdown("---")
-st.markdown("Desenvolvido por Eduardo Cristino - Projeto Agente Autônomo de Opções")
+st.subheader("Melhores Opções PUT")
+melhores_puts = filtrar_opcoes_inteligentes(df_opcoes, tipo='PUT')
+st.dataframe(melhores_puts)
