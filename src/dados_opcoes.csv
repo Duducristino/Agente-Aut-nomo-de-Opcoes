@@ -1,0 +1,5 @@
+tipo,data_vencimento,preco_exercicio,preco_ativo,valor_opcao
+CALL,2025-05-17,12.50,13.00,0.80
+PUT,2025-05-17,10.00,9.50,0.70
+CALL,2025-06-20,15.00,15.50,1.10
+PUT,2025-06-20,14.00,13.50,0.85
