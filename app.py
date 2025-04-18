@@ -4,6 +4,7 @@ import pandas as pd
 @st.cache_data
 
 df = pd.read_csv('src/dados_opcoes.csv')
+
 df_opcoes = carregar_dados()
 
 def filtrar_opcoes_inteligentes(df, tipo='CALL'):
