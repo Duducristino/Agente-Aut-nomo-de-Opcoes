@@ -1,36 +1,40 @@
-import streamlit as st
 import pandas as pd
+import streamlit as st
 
-@st.cache_data
-
-df = pd.read_csv('src/dados_opcoes.csv')
-
-df_opcoes = carregar_dados()
-
-def filtrar_opcoes_inteligentes(df, tipo='CALL'):
-    try:
-        df_filtrado = df[df['tipo'].str.upper() == tipo.upper()]
-        df_filtrado = df_filtrado[df_filtrado['volumeFinanceiro'] > 100000]
-        df_filtrado = df_filtrado[(df_filtrado['delta'] >= 0.3) & (df_filtrado['delta'] <= 0.7)]
-        df_filtrado = df_filtrado[(df_filtrado['diasParaVencimento'] >= 3) & 
-                                  (df_filtrado['diasParaVencimento'] <= 20)]
-        df_filtrado = df_filtrado[df_filtrado['precoOpcao'] <= 5.00]
-
-        preco_ativo = df_filtrado['precoAtivo'].iloc[0]
-        df_filtrado['distanciaStrike'] = abs(df_filtrado['strike'] - preco_ativo)
-        df_filtrado = df_filtrado.sort_values(by='distanciaStrike')
-
-        return df_filtrado.head(5)
-    except Exception as e:
-        st.warning(f"Erro ao filtrar opções: {e}")
-        return pd.DataFrame()
-
+# Título do app
+st.set_page_config(page_title="Agente Autônomo de Opções", layout="wide")
 st.title("Agente Autônomo de Opções")
 
-st.subheader("Melhores Opções CALL")
-melhores_calls = filtrar_opcoes_inteligentes(df_opcoes, tipo='CALL')
-st.dataframe(melhores_calls)
+# Carregar os dados
+try:
+    df = pd.read_csv("src/dados_opcoes.csv")
+except FileNotFoundError:
+    st.error("Arquivo 'dados_opcoes.csv' não encontrado na pasta 'src'. Verifique o caminho.")
+    st.stop()
 
-st.subheader("Melhores Opções PUT")
-melhores_puts = filtrar_opcoes_inteligentes(df_opcoes, tipo='PUT')
-st.dataframe(melhores_puts)
+# Filtrar colunas relevantes (ajuste se necessário)
+colunas_necessarias = ['ativo', 'tipo', 'strike', 'validade', 'cotacao_atual', 'cotacao_opcao', 'delta', 'volume']
+df = df[[col for col in colunas_necessarias if col in df.columns]]
+
+# Ajuste de tipos
+df['validade'] = pd.to_datetime(df['validade'], errors='coerce')
+
+# Filtros básicos
+col1, col2 = st.columns(2)
+tipo = col1.selectbox("Tipo de opção", ['call', 'put', 'ambos'])
+min_delta = col2.slider("Delta mínimo", min_value=-1.0, max_value=1.0, value=0.3)
+
+# Aplicar filtros
+if tipo != 'ambos':
+    df = df[df['tipo'].str.lower() == tipo]
+df = df[df['delta'].abs() >= min_delta]
+
+# Mostrar resultados
+st.subheader("Opções Selecionadas")
+st.dataframe(df.sort_values(by='volume', ascending=False).reset_index(drop=True))
+
+# Métricas
+st.subheader("Estatísticas")
+st.write(f"Total de opções encontradas: {len(df)}")
+st.write(f"Média de volume: {df['volume'].mean():.2f}")
+st.write(f"Média de delta: {df['delta'].mean():.2f}")
