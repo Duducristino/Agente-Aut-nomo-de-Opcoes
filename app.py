@@ -1,41 +1,57 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 
-# Carregar os dados
-df = pd.read_csv('src/dados_opcoes.csv')
-
-# Converter a data de vencimento
-df['validade'] = pd.to_datetime(df['data_vencimento'], errors='coerce')
-
-# Título do app
+# Título da aplicação
 st.title("Agente Autônomo de Opções")
 
-# Mostrar os dados
+# Carregar dados
+df = pd.read_csv("dados_opcoes.csv")
+
+# Conversões e limpeza
+df['data_vencimento'] = pd.to_datetime(df['data_vencimento'], errors='coerce')
+df['validade'] = df['data_vencimento']  # cópia para exibição
+
+# Mostrar dados brutos
 st.subheader("Dados das Opções")
 st.dataframe(df)
 
 # Filtros
-tipo_opcao = st.selectbox("Selecione o tipo de opção", ["CALL", "PUT"])
-data_filtro = st.date_input("Filtrar por data de vencimento (opcional)", value=None)
+st.markdown("### Selecione o tipo de opção")
+tipo_opcao = st.selectbox("Selecione o tipo de opção", df["tipo"].unique())
 
-# Filtrar dados
-df_filtrado = df[df['tipo'] == tipo_opcao]
-if data_filtro:
-    df_filtrado = df_filtrado[df_filtrado['validade'].dt.date == data_filtro]
+st.markdown("### Filtrar por data de vencimento (opcional)")
+data_venc_input = st.text_input("YYYY/MM/DD")
 
+# Aplicar filtros
+df_filtrado = df[df["tipo"] == tipo_opcao]
+
+if data_venc_input:
+    try:
+        data_formatada = datetime.strptime(data_venc_input, "%Y/%m/%d")
+        df_filtrado = df_filtrado[df_filtrado["data_vencimento"] == data_formatada]
+    except ValueError:
+        st.error("Formato de data inválido. Use o formato YYYY/MM/DD.")
+
+# Exibir resultado do filtro
 st.subheader("Resultado do Filtro")
 st.dataframe(df_filtrado)
 
-# Lógica simples de decisão
+# Lógica de recomendação
 st.subheader("Recomendações")
-for _, row in df_filtrado.iterrows():
-    if row['tipo'] == 'CALL':
-        if row['preco_ativo'] > row['preco_exercicio']:
-            st.write(f"CALL com vencimento em {row['validade'].date()}: **Vale a pena exercer.**")
+for i, row in df_filtrado.iterrows():
+    tipo = row['tipo']
+    preco_ativo = row['preco_ativo']
+    preco_exercicio = row['preco_exercicio']
+    venc = row['data_vencimento'].date()
+
+    if tipo == 'CALL':
+        if preco_ativo > preco_exercicio:
+            st.markdown(f"**CALL** com vencimento em {venc}: **Vale a pena exercer.**")
         else:
-            st.write(f"CALL com vencimento em {row['validade'].date()}: **Não vale a pena.**")
-    elif row['tipo'] == 'PUT':
-        if row['preco_ativo'] < row['preco_exercicio']:
-            st.write(f"PUT com vencimento em {row['validade'].date()}: **Vale a pena exercer.**")
+            st.markdown(f"**CALL** com vencimento em {venc}: Não vale a pena.")
+    elif tipo == 'PUT':
+        if preco_ativo < preco_exercicio:
+            st.markdown(f"**PUT** com vencimento em {venc}: **Vale a pena exercer.**")
         else:
-            st.write(f"PUT com vencimento em {row['validade'].date()}: **Não vale a pena.**")
+            st.markdown(f"**PUT** com vencimento em {venc}: Não vale a pena.")
